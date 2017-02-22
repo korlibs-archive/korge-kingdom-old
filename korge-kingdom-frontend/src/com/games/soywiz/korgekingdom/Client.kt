@@ -2,6 +2,7 @@ package com.games.soywiz.korgekingdom
 
 import com.soywiz.korge.scene.Module
 import com.soywiz.korge.scene.Scene
+import com.soywiz.korio.async.spawnAndForget
 import com.soywiz.korio.inject.AsyncInjector
 import com.soywiz.korio.inject.Inject
 
@@ -29,6 +30,28 @@ class KorgeKingdomMainScene : Scene() {
         val result = ch.wait<Login.Result>()
         println("[CLIENT] Got result: $result")
 
+        spawnAndForget {
+            ch.messageHandlers()
+        }
+
+        if (result.success) {
+            ch.send(Chat.Say("HELLO!"))
+        }
+
 //val client = WebSocketClient(URI("ws://127.0.0.1:8080/"))
+    }
+
+    suspend fun Channel.messageHandlers() {
+        while (true) {
+            val packet = read()
+            when (packet) {
+                is Chat.Said -> {
+                    println(packet)
+                }
+                else -> {
+                    println("Unhandled packet: $packet")
+                }
+            }
+        }
     }
 }
