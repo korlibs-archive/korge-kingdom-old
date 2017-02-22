@@ -11,9 +11,8 @@ class KorgeKingdomModule : Module() {
 
 class KorgeKingdomMainScene : Scene() {
     @Inject lateinit var injector: AsyncInjector
+    @Inject lateinit var userInfo: UserInfo
     lateinit var ch: Channel
-    val user = "test"
-    val password = "test"
 
     suspend override fun init() {
         super.init()
@@ -22,9 +21,13 @@ class KorgeKingdomMainScene : Scene() {
 
         ch = channel ?: ChannelPair().client // @TODO: WebSocketClient
 
+        println("[CLIENT] Waiting challenge...")
         val challenge = ch.wait<LoginChallenge>()
+        println("[CLIENT] Got challenge: $challenge")
 
-        ch.send(LoginRequest(user = user, challengedHash = LoginChallenge.hash(challenge.key, password)))
+        ch.send(LoginRequest(user = userInfo.user, challengedHash = LoginChallenge.hash(challenge.key, userInfo.password)))
+        val result = ch.wait<LoginResult>()
+        println("[CLIENT] Got result: $result")
 
 //val client = WebSocketClient(URI("ws://127.0.0.1:8080/"))
     }

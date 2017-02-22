@@ -4,11 +4,12 @@ import com.soywiz.korio.async.ProduceConsumer
 import com.soywiz.korio.error.invalidOp
 import com.soywiz.korio.serialization.json.Json
 import com.soywiz.korio.util.Dynamic
+import com.soywiz.korio.util.Extra
 import io.vertx.core.http.ServerWebSocket
 
 open class VertxClientChannel(
         private val ws: ServerWebSocket
-) : Channel {
+) : Channel, Extra by Extra.Mixin() {
     val messageQueue = ProduceConsumer<Packet>()
     val unprocessedMessageQueue = ProduceConsumer<Packet>()
 

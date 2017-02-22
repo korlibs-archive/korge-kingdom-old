@@ -16,4 +16,4 @@ data class LoginChallenge(val key: String) : LoginPacket {
 
 data class LoginRequest(val user: String, val challengedHash: String) : LoginPacket
 
-data class LoginResult(val success: Boolean) : LoginPacket
+data class LoginResult(val success: Boolean, val msg: String) : LoginPacket

@@ -4,8 +4,9 @@ import com.soywiz.korio.async.Consumer
 import com.soywiz.korio.async.ProduceConsumer
 import com.soywiz.korio.async.Producer
 import com.soywiz.korio.error.invalidOp
+import com.soywiz.korio.util.Extra
 
-interface Channel {
+interface Channel : Extra {
     suspend fun send(packet: Packet): Unit
     suspend fun read(): Packet
 }
@@ -30,7 +31,7 @@ class ChannelPair {
 }
 
 fun Channel(producer: Producer<Packet>, consumer: Consumer<Packet>): Channel {
-    val channel = object : Channel {
+    val channel = object : Channel, Extra by Extra.Mixin() {
         suspend override fun send(packet: Packet) = producer.produce(packet)
         suspend override fun read(): Packet = consumer.consume()!!
 

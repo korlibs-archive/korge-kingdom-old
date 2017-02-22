@@ -6,4 +6,5 @@ dependencies {
     compile project(':korge-kingdom-shared')
     compile "com.soywiz:korio:$korVersion"
     compile "com.soywiz:korio-vertx:$korVersion"
+    compile "com.soywiz:korio-ext-db-redis:$korVersion"
 }
