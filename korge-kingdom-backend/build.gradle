@@ -1,0 +1,9 @@
+apply from: "../include.gradle"
+
+apply plugin: 'kotlin'
+
+dependencies {
+    compile project(':korge-kingdom-shared')
+    testCompile "com.soywiz:korio:$korVersion"
+    testCompile "com.soywiz:korio-vertx:$korVersion"
+}

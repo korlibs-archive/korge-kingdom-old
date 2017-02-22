@@ -1,0 +1,7 @@
+rootProject.name = 'korge-kingdom-root'
+
+include(
+        'korge-kingdom-backend',
+        'korge-kingdom-shared',
+        'korge-kingdom-frontend',
+)
