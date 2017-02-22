@@ -1,5 +1,6 @@
 package com.games.soywiz.korgekingdom
 
+import com.soywiz.korim.geom.Point2d
 import com.soywiz.korio.crypto.sha1Async
 import com.soywiz.korio.util.toHexString
 
@@ -47,11 +48,11 @@ interface EntityPackets : Packet {
     enum class Type { PLAYER, NPC, ENEMY }
 
     object Client {
-        data class Move(val x: Int, val y: Int) : EntityPackets
+        data class Move(val pos: Point2d) : EntityPackets
     }
 
     object Server {
-        data class Set(val id: Long, val name: String, val type: Type, val x: Int, val y: Int) : EntityPackets
-        data class Moved(val id: Long, val x: Int, val y: Int) : EntityPackets
+        data class Set(val id: Long, val name: String, val type: Type, val pos: Point2d) : EntityPackets
+        data class Moved(val id: Long, val pos: Point2d) : EntityPackets
     }
 }

@@ -1,5 +1,6 @@
 package com.games.soywiz.korgekingdom
 
+import com.soywiz.korim.geom.Point2d
 import com.soywiz.korio.error.invalidOp
 import com.soywiz.korio.ext.db.redis.Redis
 import com.soywiz.korio.ext.db.redis.hget
@@ -14,8 +15,16 @@ import kotlin.collections.LinkedHashSet
 class Server(
         private val redis: Redis
 ) {
-    class Room(val name: String) {
+    inner class Room(val name: String) {
         val clients = LinkedHashSet<Channel>()
+    }
+
+    suspend fun Channel.join(room: Room) {
+        this.room.clients -= this
+        this.room = room
+        this.room.clients += this
+        this.send(RoomPackets.Server.Joined(self = entityId, name = room.name))
+        this.room.clients.send(EntityPackets.Server.Set(this.entityId, this.userName, EntityPackets.Type.PLAYER, this.pos))
     }
 
     private val clients = LinkedHashSet<Channel>()
@@ -27,9 +36,10 @@ class Server(
     val roomsByName = hashMapOf<String, Room>(defaultRoom.name to defaultRoom)
 
     // Extra properties for Channel
-    var Channel.userName: String by Extra.Property("userName") { "" }
-    var Channel.entityId: Long by Extra.Property("entityId") { 0L }
-    var Channel.room: Room by Extra.Property("room") { defaultRoom }
+    var Channel.userName: String by Extra.Property { "" }
+    var Channel.entityId: Long by Extra.Property { 0L }
+    var Channel.room: Room by Extra.Property { defaultRoom }
+    val Channel.pos: Point2d by Extra.Property { Point2d() }
 
     var lastEntityId = 0L
 
@@ -43,9 +53,7 @@ class Server(
             clients += this
             userName = user
             entityId = lastEntityId++
-            room = defaultRoom
-            room.clients += this
-            send(RoomPackets.Server.Joined(self = entityId, name = room.name))
+            join(defaultRoom)
             processIngame()
         } finally {
             room.clients -= this
@@ -61,7 +69,7 @@ class Server(
                     server.clients.send(ChatPackets.Server.Said(userName, it.msg))
                 }
                 is EntityPackets.Client.Move -> {
-                    room.clients.send(EntityPackets.Server.Moved(entityId, it.x, it.y))
+                    room.clients.send(EntityPackets.Server.Moved(entityId, it.pos))
                 }
                 else -> {
                     invalidOp("Unknown packet said")
