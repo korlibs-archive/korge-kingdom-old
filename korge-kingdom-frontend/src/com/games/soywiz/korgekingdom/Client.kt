@@ -2,6 +2,7 @@ package com.games.soywiz.korgekingdom
 
 import com.soywiz.korge.bitmapfont.BitmapFont
 import com.soywiz.korge.bitmapfont.FontDescriptor
+import com.soywiz.korge.input.component.onClick
 import com.soywiz.korge.render.Texture
 import com.soywiz.korge.resources.Path
 import com.soywiz.korge.scene.Module
@@ -9,7 +10,10 @@ import com.soywiz.korge.scene.Scene
 import com.soywiz.korge.tween.Easing
 import com.soywiz.korge.tween.rangeTo
 import com.soywiz.korge.tween.tween
+import com.soywiz.korge.util.IntArray2
 import com.soywiz.korge.view.*
+import com.soywiz.korge.view.tiles.TileSet
+import com.soywiz.korge.view.tiles.tileMap
 import com.soywiz.korim.geom.Point2d
 import com.soywiz.korio.async.AsyncThread
 import com.soywiz.korio.async.sleepNextFrame
@@ -42,13 +46,15 @@ class KorgeKingdomMainScene(
 
         val channel = injector.getOrNull(Channel::class.java)
 
-        map = views.container()
-        root += map
+        val tileset = TileSet(avatarTexture, 32, 32)
+
+        map = root.container {
+            this.tileMap(IntArray2(32, 32), tileset)
+        }
 
         ch = channel ?: ChannelPair().client // @TODO: WebSocketClient
 
-        roomNameText = views.text(font, "Room")
-        root += roomNameText
+        roomNameText = root.text(font, "Room")
 
         println("[CLIENT] Waiting challenge...")
         val challenge = ch.wait<Login.Server.Challenge>()
@@ -59,25 +65,22 @@ class KorgeKingdomMainScene(
         println("[CLIENT] Got result: $result")
 
         spawnAndForget { ch.messageHandlers() }
-        spawnAndForget { inputHandler() }
 
         if (result.success) {
             ch.send(ChatPackets.Client.Say("HELLO!"))
         }
 
+        map.onClick {
+            spawnAndForget {
+                println("click! ${it.currentPos}")
+                ch.send(EntityPackets.Client.Move(it.currentPos))
+            }
+        }
+
 //val client = WebSocketClient(URI("ws://127.0.0.1:8080/"))
     }
 
-    suspend fun inputHandler() {
-        while (true) {
-            //println(views.input.mouse)
-            val mouse = views.input.mouse
-            ch.send(EntityPackets.Client.Move(mouse))
-            frame()
-        }
-    }
-
-    val Channel.queue by Extra.Property("queue") { AsyncThread() }
+    val Channel.queue by Extra.Property { AsyncThread() }
 
     suspend fun Channel.messageHandlers() {
         while (true) {
@@ -91,12 +94,19 @@ class KorgeKingdomMainScene(
                     roomNameText.text = it.name
                 }
                 is EntityPackets.Server.Set -> {
-                    val view = entities.getOrPut(it.id) { views.container() }
-                    view += views.image(avatarTexture)
-                    view += views.text(font, it.name, textSize = 22.0)
-                    map += view
-                    view.x = it.pos.x
-                    view.y = it.pos.y
+                    entities.getOrPut(it.id) { map.container() }.apply {
+                        children.clear()
+                        image(avatarTexture) {
+                            x = 10.0
+                            y = 10.0
+                        }
+                        text(font, it.name, textSize = 22.0) {
+                            x = 10.0
+                            y = 10.0
+                        }
+                        x = it.pos.x
+                        y = it.pos.y
+                    }
                 }
                 is EntityPackets.Server.Moved -> {
                     val packet = it
