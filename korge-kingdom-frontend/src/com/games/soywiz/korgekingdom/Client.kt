@@ -3,6 +3,7 @@ package com.games.soywiz.korgekingdom
 import com.soywiz.korge.bitmapfont.BitmapFont
 import com.soywiz.korge.bitmapfont.FontDescriptor
 import com.soywiz.korge.input.component.onClick
+import com.soywiz.korge.input.component.onMove
 import com.soywiz.korge.render.Texture
 import com.soywiz.korge.resources.Path
 import com.soywiz.korge.scene.Module
@@ -16,12 +17,16 @@ import com.soywiz.korge.view.tiles.TileSet
 import com.soywiz.korge.view.tiles.tileMap
 import com.soywiz.korim.geom.Point2d
 import com.soywiz.korio.async.AsyncThread
+import com.soywiz.korio.async.ProduceConsumer
 import com.soywiz.korio.async.sleepNextFrame
 import com.soywiz.korio.async.spawnAndForget
 import com.soywiz.korio.inject.AsyncInjector
 import com.soywiz.korio.inject.Inject
+import com.soywiz.korio.inject.Optional
+import com.soywiz.korio.net.ws.WebSocketClient
 import com.soywiz.korio.util.Extra
 import com.soywiz.korio.util.clamp
+import java.net.URI
 
 class KorgeKingdomModule : Module() {
     override val title = "Korge Kingdom"
@@ -34,7 +39,7 @@ class KorgeKingdomMainScene(
         @Path("avatar.png") private val avatarTexture: Texture
 ) : Scene() {
     @Inject lateinit var injector: AsyncInjector
-    @Inject lateinit var userInfo: UserInfo
+    @Inject @Optional var userInfo: UserInfo? = null
     lateinit var ch: Channel
     lateinit var map: Container
     lateinit var roomNameText: Text
@@ -44,24 +49,25 @@ class KorgeKingdomMainScene(
     suspend override fun init() {
         super.init()
 
-        val channel = injector.getOrNull(Channel::class.java)
-
         val tileset = TileSet(avatarTexture, 32, 32)
 
         map = root.container {
             this.tileMap(IntArray2(32, 32), tileset)
         }
 
-        ch = channel ?: ChannelPair().client // @TODO: WebSocketClient
+
+        ch = injector.getOrNull(Channel::class.java) ?: WebSocketClient(URI("ws://127.0.0.1:8080/")).toChannel()
 
         roomNameText = root.text(font, "Room")
 
         println("[CLIENT] Waiting challenge...")
-        val challenge = ch.wait<Login.Server.Challenge>()
+        val challenge = ch.wait<LoginPacket.Server.Challenge>()
         println("[CLIENT] Got challenge: $challenge")
 
-        ch.send(Login.Client.Request(user = userInfo.user, challengedHash = Login.Server.Challenge.hash(challenge.key, userInfo.password)))
-        val result = ch.wait<Login.Server.Result>()
+        val actualUserInfo = userInfo ?: UserInfo("test", "test")
+
+        ch.send(LoginPacket.Client.Request(user = actualUserInfo.user, challengedHash = ProtocolChallenge.hash(challenge.key, actualUserInfo.password)))
+        val result = ch.wait<LoginPacket.Server.Result>()
         println("[CLIENT] Got result: $result")
 
         spawnAndForget { ch.messageHandlers() }
@@ -76,8 +82,6 @@ class KorgeKingdomMainScene(
                 ch.send(EntityPackets.Client.Move(it.currentPos))
             }
         }
-
-//val client = WebSocketClient(URI("ws://127.0.0.1:8080/"))
     }
 
     val Channel.queue by Extra.Property { AsyncThread() }
@@ -97,8 +101,8 @@ class KorgeKingdomMainScene(
                     entities.getOrPut(it.id) { map.container() }.apply {
                         children.clear()
                         image(avatarTexture) {
-                            x = 10.0
-                            y = 10.0
+                            x = 0.0
+                            y = 0.0
                         }
                         text(font, it.name, textSize = 22.0) {
                             x = 10.0
@@ -125,6 +129,34 @@ class KorgeKingdomMainScene(
             }
         }
     }
+}
+
+private fun WebSocketClient.toChannel(): Channel {
+    val pc = ProduceConsumer<String>()
+    val ws = this
+
+    ws.onStringMessage { pc.produce(it) }
+
+    val channel = object : Channel, Extra by Extra.Mixin() {
+        suspend override fun send(packet: Packet) {
+            val str = Packet.serialize(packet)
+            println("[CLIENT] [WS-SEND] $str")
+            ws.send(str)
+        }
+
+        suspend override fun read(): Packet {
+            while (true) {
+                val str = pc.consume()!!
+                println("[CLIENT] [WS-RECV] $str")
+                try {
+                    return Packet.deserialize(str)
+                } catch (e: ClassNotFoundException) {
+                    System.err.println("${e::class.java.name}: ${e.message}")
+                }
+            }
+        }
+    }
+    return channel
 }
 
 suspend fun frame() = sleepNextFrame()

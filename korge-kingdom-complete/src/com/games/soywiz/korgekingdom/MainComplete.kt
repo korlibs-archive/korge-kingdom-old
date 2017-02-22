@@ -12,10 +12,10 @@ fun main(args: Array<String>) = EventLoop {
     val serverInjector = AsyncInjector()
             .map(Redis(listOf("127.0.0.1:6379")))
     val clientInjector = AsyncInjector()
-            .map(Channel::class.java, pair.client)
+            .map(Channel::class.java, pair.client.log("client"))
             .map(userInfo)
 
-    val server = serverInjector.get<Server>()
+    val server = serverInjector.get<ServerHandler>()
     server.register(userInfo.user, userInfo.password)
     spawn { server.handleClient(pair.server) }
     spawn { Korge(KorgeKingdomModule(), args = args, injector = clientInjector) }

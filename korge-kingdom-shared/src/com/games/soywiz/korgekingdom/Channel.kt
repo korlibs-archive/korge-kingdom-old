@@ -36,9 +36,23 @@ class ChannelPair {
 
 fun Channel(producer: Producer<Packet>, consumer: Consumer<Packet>): Channel {
     val channel = object : Channel, Extra by Extra.Mixin() {
-        suspend override fun send(packet: Packet) = producer.produce(packet)
+        suspend override fun send(packet: Packet) = producer.produce(Packet.serializeDeserialize(packet))
         suspend override fun read(): Packet = consumer.consume()!!
 
     }
     return channel
+}
+
+fun Channel.log(name: String): Channel = object : Channel, Extra by Extra.Mixin() {
+    suspend override fun send(packet: Packet) {
+        println("Channel[$name][SEND]: ${Packet.serialize(packet)}")
+        this@log.send(packet)
+    }
+
+    suspend override fun read(): Packet {
+        val res = this@log.read()
+        println("Channel[$name][RECV]: ${Packet.serialize(res)}")
+        return res
+    }
+
 }

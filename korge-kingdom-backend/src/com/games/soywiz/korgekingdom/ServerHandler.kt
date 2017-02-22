@@ -12,7 +12,7 @@ import java.util.*
 import kotlin.collections.LinkedHashSet
 
 @Prototype
-class Server(
+class ServerHandler(
         private val redis: Redis
 ) {
     inner class Room(val name: String) {
@@ -80,18 +80,18 @@ class Server(
 
     suspend fun Channel.login(): String {
         val challenge = UUID.randomUUID().toString()
-        send(Login.Server.Challenge(challenge))
-        val req = wait<Login.Client.Request>()
+        send(LoginPacket.Server.Challenge(challenge))
+        val req = wait<LoginPacket.Client.Request>()
 
         try {
             val user = req.user
             val password = logins.hget(user) ?: invalidOp("Can't find user '$user'")
-            val expectedHash = Login.Server.Challenge.hash(challenge, password)
+            val expectedHash = ProtocolChallenge.hash(challenge, password)
             if (req.challengedHash != expectedHash) invalidOp("Invalid challenge")
-            send(Login.Server.Result(true, "ok"))
+            send(LoginPacket.Server.Result(true, "ok"))
             return user
         } catch (e: Throwable) {
-            send(Login.Server.Result(false, e.message ?: "error"))
+            send(LoginPacket.Server.Result(false, e.message ?: "error"))
             throw e
         }
     }

@@ -11,7 +11,7 @@ fun main(args: Array<String>) = EventLoop.main {
     val vertx = Vertx.vertx()
     val resources = ResourcesVfs
     val serverInjector = AsyncInjector().map(Redis(listOf("127.0.0.1:6379")))
-    val server = serverInjector.get<Server>()
+    val server = serverInjector.get<ServerHandler>()
 
     vertx.createHttpServer()
             .websocketHandler { ws ->
@@ -24,5 +24,7 @@ fun main(args: Array<String>) = EventLoop.main {
                     req.response().end(resources["ws.html"].readString())
                 }
             }
-            .listen(8080);
+            .listen(8080) {
+                println("Listening at 8080")
+            };
 }
