@@ -1,6 +1,8 @@
 apply from: "../include.gradle"
 
 apply plugin: 'kotlin'
+apply plugin: 'jtransc'
+//apply plugin: 'application'
 
 dependencies {
     compile project(':korge-kingdom-shared')
@@ -8,4 +10,11 @@ dependencies {
     compile "com.soywiz:korui:$korVersion"
     compile "com.soywiz:korge:$korVersion"
     compile "io.vertx:vertx-core:$vertxVersion"
+}
+
+jtransc {
+    mainClassName = "com.games.soywiz.korgekingdom.MainFrontendKt"
+    treeshaking = true
+    minimizeNames = true
+    assets = ["korge-kingdom-frontend/resources"]
 }

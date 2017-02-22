@@ -1,8 +1,11 @@
 apply from: "../include.gradle"
 
 apply plugin: 'kotlin'
+//apply plugin: 'application'
 
 dependencies {
     compile project(':korge-kingdom-backend')
     compile project(':korge-kingdom-frontend')
 }
+
+//mainClassName = "com.games.soywiz.korgekingdom.MainFrontendKt"

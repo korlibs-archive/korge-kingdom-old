@@ -40,7 +40,7 @@ class KorgeKingdomMainScene(
 ) : Scene() {
     @Inject lateinit var injector: AsyncInjector
     @Inject @Optional var userInfo: UserInfo? = null
-    lateinit var ch: Channel
+    lateinit var ch: CClient
     lateinit var map: Container
     lateinit var roomNameText: Text
 
@@ -56,7 +56,7 @@ class KorgeKingdomMainScene(
         }
 
 
-        ch = injector.getOrNull(Channel::class.java) ?: WebSocketClient(URI("ws://127.0.0.1:8080/")).toChannel()
+        ch = injector.getOrNull(CClient::class.java) ?: WebSocketClient(URI("ws://127.0.0.1:8080/")).toClient()
 
         roomNameText = root.text(font, "Room")
 
@@ -84,9 +84,9 @@ class KorgeKingdomMainScene(
         }
     }
 
-    val Channel.queue by Extra.Property { AsyncThread() }
+    val CClient.queue by Extra.Property { AsyncThread() }
 
-    suspend fun Channel.messageHandlers() {
+    suspend fun CClient.messageHandlers() {
         while (true) {
             val it = read()
             when (it) {
@@ -131,13 +131,13 @@ class KorgeKingdomMainScene(
     }
 }
 
-private fun WebSocketClient.toChannel(): Channel {
+private fun WebSocketClient.toClient(): CClient {
     val pc = ProduceConsumer<String>()
     val ws = this
 
     ws.onStringMessage { pc.produce(it) }
 
-    val channel = object : Channel, Extra by Extra.Mixin() {
+    val client = object : CClient, Extra by Extra.Mixin() {
         suspend override fun send(packet: Packet) {
             val str = Packet.serialize(packet)
             println("[CLIENT] [WS-SEND] $str")
@@ -156,7 +156,7 @@ private fun WebSocketClient.toChannel(): Channel {
             }
         }
     }
-    return channel
+    return client
 }
 
 suspend fun frame() = sleepNextFrame()

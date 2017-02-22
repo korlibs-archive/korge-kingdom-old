@@ -8,6 +8,7 @@ import com.soywiz.korio.ext.db.redis.hset
 import com.soywiz.korio.ext.db.redis.key
 import com.soywiz.korio.inject.Prototype
 import com.soywiz.korio.util.Extra
+import java.io.EOFException
 import java.util.*
 import kotlin.collections.LinkedHashSet
 
@@ -16,52 +17,60 @@ class ServerHandler(
         private val redis: Redis
 ) {
     inner class Room(val name: String) {
-        val clients = LinkedHashSet<Channel>()
+        val clients = LinkedHashSet<CClient>()
     }
 
-    suspend fun Channel.join(room: Room) {
+    suspend fun CClient.join(room: Room) {
         this.room.clients -= this
         this.room = room
         this.room.clients += this
         this.send(RoomPackets.Server.Joined(self = entityId, name = room.name))
         this.room.clients.send(EntityPackets.Server.Set(this.entityId, this.userName, EntityPackets.Type.PLAYER, this.pos))
+
+        for (other in this.room.clients) {
+            this.send(EntityPackets.Server.Set(other.entityId, other.userName, EntityPackets.Type.PLAYER, other.pos))
+        }
     }
 
-    private val clients = LinkedHashSet<Channel>()
+    private val clients = LinkedHashSet<CClient>()
     private val logins = redis.key("korge_logins")
 
     val defaultRoom = Room("default")
 
     val server = this
-    val roomsByName = hashMapOf<String, Room>(defaultRoom.name to defaultRoom)
 
-    // Extra properties for Channel
-    var Channel.userName: String by Extra.Property { "" }
-    var Channel.entityId: Long by Extra.Property { 0L }
-    var Channel.room: Room by Extra.Property { defaultRoom }
-    val Channel.pos: Point2d by Extra.Property { Point2d() }
+    // Extra properties for Client
+    var CClient.userName: String by Extra.Property { "" }
+    var CClient.entityId: Long by Extra.Property { 0L }
+    var CClient.room: Room by Extra.Property { defaultRoom }
+    val CClient.pos: Point2d by Extra.Property { Point2d() }
 
     var lastEntityId = 0L
 
-    suspend fun handleClient(channel: Channel) {
-        channel.process()
+    suspend fun handleClient(client: CClient) {
+        client.process()
     }
 
-    suspend fun Channel.process() {
+    suspend fun CClient.process() {
+        println("Connected $this")
         val user = login()
         try {
+            println("Login $this: $user")
             clients += this
             userName = user
             entityId = lastEntityId++
             join(defaultRoom)
             processIngame()
+        } catch (e: EOFException) {
+            // Normal ending!
         } finally {
+            println("Disconnecting $this")
             room.clients -= this
             clients -= this
         }
     }
 
-    suspend fun Channel.processIngame() {
+    suspend fun CClient.processIngame() {
         while (true) {
             val it = read()
             when (it) {
@@ -78,7 +87,7 @@ class ServerHandler(
         }
     }
 
-    suspend fun Channel.login(): String {
+    suspend fun CClient.login(): String {
         val challenge = UUID.randomUUID().toString()
         send(LoginPacket.Server.Challenge(challenge))
         val req = wait<LoginPacket.Client.Request>()
@@ -96,7 +105,7 @@ class ServerHandler(
         }
     }
 
-    suspend fun register(user: String, password: String, notify: Channel? = null) {
+    suspend fun register(user: String, password: String, notify: CClient? = null) {
         logins.hset(user, password)
     }
 }
