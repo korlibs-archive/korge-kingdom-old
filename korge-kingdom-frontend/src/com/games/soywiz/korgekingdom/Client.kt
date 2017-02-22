@@ -20,7 +20,9 @@ import com.soywiz.korio.util.Extra
 import com.soywiz.korio.util.clamp
 
 class KorgeKingdomModule : Module() {
-    override val mainScene: Class<out Scene> get() = KorgeKingdomMainScene::class.java
+    override val title = "Korge Kingdom"
+    override val icon = "icon.png"
+    override val mainScene get() = KorgeKingdomMainScene::class.java
 }
 
 class KorgeKingdomMainScene(
@@ -33,7 +35,7 @@ class KorgeKingdomMainScene(
     lateinit var map: Container
     lateinit var roomNameText: Text
 
-    val entities = hashMapOf<Long, View>()
+    val entities = hashMapOf<Long, Container>()
 
     suspend override fun init() {
         super.init()
@@ -89,7 +91,9 @@ class KorgeKingdomMainScene(
                     roomNameText.text = it.name
                 }
                 is EntityPackets.Server.Set -> {
-                    val view = entities.getOrPut(it.id) { views.image(avatarTexture) }
+                    val view = entities.getOrPut(it.id) { views.container() }
+                    view += views.image(avatarTexture)
+                    view += views.text(font, it.name, textSize = 22.0)
                     map += view
                     view.x = it.pos.x
                     view.y = it.pos.y
