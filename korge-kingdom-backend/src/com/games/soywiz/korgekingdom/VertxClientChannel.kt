@@ -6,11 +6,11 @@ import com.soywiz.korio.serialization.json.Json
 import com.soywiz.korio.util.Dynamic
 import io.vertx.core.http.ServerWebSocket
 
-open class Client(
+open class VertxClientChannel(
         private val ws: ServerWebSocket
-) {
-    val messageQueue = ProduceConsumer<Any>()
-    val unprocessedMessageQueue = ProduceConsumer<Any>()
+) : Channel {
+    val messageQueue = ProduceConsumer<Packet>()
+    val unprocessedMessageQueue = ProduceConsumer<Packet>()
 
     init {
         ws.handler {
@@ -19,29 +19,17 @@ open class Client(
             val clazz = Class.forName(type)
             if (clazz.isAssignableFrom(Packet::class.java)) invalidOp("Invalid packet $type")
             val typedObject = Dynamic.dynamicCast(info["payload"]!!, clazz)
-            messageQueue.produce(typedObject!!)
+            messageQueue.produce(typedObject!! as Packet)
             //println("$it:$typedObject")
         }
     }
 
-    suspend open fun send(packet: Any): Unit {
+    suspend override fun send(packet: Packet): Unit {
         val str = Json.encode(mapOf("type" to packet::class.java.canonicalName, "payload" to packet))
         ws.writeFinalTextFrame(str)
     }
 
-    suspend fun read(): Packet {
+    suspend override fun read(): Packet {
         return messageQueue.consume() as Packet
-    }
-
-    suspend fun <T : Packet> wait(clazz: Class<T>): T {
-        println("Waiting for!: $clazz")
-        while (true) {
-            val msg = read()
-            if (msg::class.java.isAssignableFrom(clazz)) {
-                return msg as T
-            } else {
-                unprocessedMessageQueue.produce(msg)
-            }
-        }
     }
 }

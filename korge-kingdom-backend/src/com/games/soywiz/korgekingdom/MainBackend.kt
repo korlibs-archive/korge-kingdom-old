@@ -13,7 +13,7 @@ fun main(args: Array<String>) = EventLoop.main {
     vertx.createHttpServer()
             .websocketHandler { ws ->
                 spawnAndForget {
-                    login(Client(ws))
+                    serverHandleClient(VertxClientChannel(ws))
                 }
             }
             .requestHandler { req ->
@@ -22,12 +22,4 @@ fun main(args: Array<String>) = EventLoop.main {
                 }
             }
             .listen(8080);
-}
-
-
-suspend fun login(client: Client) {
-    val uuid = UUID.randomUUID().toString()
-    client.send(LoginChallenge(uuid))
-    val req = client.wait(LoginRequest::class.java)
-    println(req)
 }
