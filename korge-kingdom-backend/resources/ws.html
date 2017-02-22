@@ -1,0 +1,18 @@
+<html>
+<body>
+<script type="text/javascript">
+    var ws = new WebSocket('ws://127.0.0.1:8080/');
+    ws.onopen = function(e) {
+        ws.send(JSON.stringify({
+            'type': 'com.games.soywiz.korgekingdom.LoginRequest',
+            'payload': {
+                'user': 'test',
+                'challengedHash': 'challengedHash'
+            }
+        }))
+    };
+    window.ws = ws;
+    console.log(ws);
+</script>
+</body>
+</html>

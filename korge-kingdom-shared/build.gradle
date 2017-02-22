@@ -3,5 +3,5 @@ apply from: "../include.gradle"
 apply plugin: 'kotlin'
 
 dependencies {
-    testCompile "com.soywiz:korio:$korVersion"
+    compile "com.soywiz:korio:$korVersion"
 }

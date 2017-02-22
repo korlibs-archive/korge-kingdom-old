@@ -4,4 +4,5 @@ include(
         'korge-kingdom-backend',
         'korge-kingdom-shared',
         'korge-kingdom-frontend',
+        'korge-kingdom-complete',
 )
