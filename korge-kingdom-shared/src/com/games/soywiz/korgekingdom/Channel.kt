@@ -11,6 +11,10 @@ interface Channel : Extra {
     suspend fun read(): Packet
 }
 
+suspend inline fun Iterable<Channel>.send(packet: Packet): Unit {
+    for (channel in this) channel.send(packet)
+}
+
 suspend inline fun <reified T : Packet> Channel.wait(): T = wait(T::class.java)
 
 suspend fun <T : Packet> Channel.wait(clazz: Class<T>): T {

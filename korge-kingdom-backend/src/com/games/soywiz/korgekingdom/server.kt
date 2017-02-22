@@ -6,31 +6,63 @@ import com.soywiz.korio.ext.db.redis.hget
 import com.soywiz.korio.ext.db.redis.hset
 import com.soywiz.korio.ext.db.redis.key
 import com.soywiz.korio.inject.Prototype
+import com.soywiz.korio.util.Extra
 import java.util.*
 
 @Prototype
 class Server(
         private val redis: Redis
 ) {
+    private val clients = hashMapOf<String, Channel>()
     private val logins = redis.key("korge_logins")
 
-    suspend fun handleClient(client: Channel) {
-        client.login()
+    // Extra properties for Channel
+    var Channel.userName: String by Extra.Property("userName") { "" }
+
+    suspend fun handleClient(channel: Channel) {
+        channel.process()
     }
 
-    suspend fun Channel.login() {
+    suspend fun Channel.process() {
+        val user = login()
+        try {
+            clients[user] = this
+            userName = user
+            processIngame()
+        } finally {
+            clients.remove(user)
+        }
+    }
+
+    suspend fun Channel.processIngame() {
+        while (true) {
+            val packet = read()
+            when (packet) {
+                is Chat.Say -> {
+                    clients.values.send(Chat.Said(userName, packet.msg))
+                }
+                else -> {
+                    invalidOp("Unknown packet said")
+                }
+            }
+        }
+    }
+
+    suspend fun Channel.login(): String {
         val challenge = UUID.randomUUID().toString()
-        send(LoginChallenge(challenge))
-        val req = wait<LoginRequest>()
+        send(Login.Challenge(challenge))
+        val req = wait<Login.Request>()
 
         try {
             val user = req.user
             val password = logins.hget(user) ?: invalidOp("Can't find user '$user'")
-            val expectedHash = LoginChallenge.hash(challenge, password)
+            val expectedHash = Login.Challenge.hash(challenge, password)
             if (req.challengedHash != expectedHash) invalidOp("Invalid challenge")
-            send(LoginResult(true, "ok"))
+            send(Login.Result(true, "ok"))
+            return user
         } catch (e: Throwable) {
-            send(LoginResult(false, e.message ?: "error"))
+            send(Login.Result(false, e.message ?: "error"))
+            throw e
         }
     }
 

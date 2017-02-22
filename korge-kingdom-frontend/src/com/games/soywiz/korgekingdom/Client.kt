@@ -22,11 +22,11 @@ class KorgeKingdomMainScene : Scene() {
         ch = channel ?: ChannelPair().client // @TODO: WebSocketClient
 
         println("[CLIENT] Waiting challenge...")
-        val challenge = ch.wait<LoginChallenge>()
+        val challenge = ch.wait<Login.Challenge>()
         println("[CLIENT] Got challenge: $challenge")
 
-        ch.send(LoginRequest(user = userInfo.user, challengedHash = LoginChallenge.hash(challenge.key, userInfo.password)))
-        val result = ch.wait<LoginResult>()
+        ch.send(Login.Request(user = userInfo.user, challengedHash = Login.Challenge.hash(challenge.key, userInfo.password)))
+        val result = ch.wait<Login.Result>()
         println("[CLIENT] Got result: $result")
 
 //val client = WebSocketClient(URI("ws://127.0.0.1:8080/"))
