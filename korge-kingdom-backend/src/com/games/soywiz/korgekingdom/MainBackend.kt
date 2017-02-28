@@ -29,5 +29,5 @@ fun main(args: Array<String>) = EventLoop.main {
                 } else {
                     println("WAS NOT ABLE to bind at post 8080")
                 }
-            };
+            }
 }

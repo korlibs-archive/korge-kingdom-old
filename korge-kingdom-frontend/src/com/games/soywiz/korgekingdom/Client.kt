@@ -55,8 +55,7 @@ class KorgeKingdomMainScene(
             this.tileMap(IntArray2(32, 32), tileset)
         }
 
-
-        ch = injector.getOrNull(CClient::class.java) ?: WebSocketClient(URI("ws://127.0.0.1:8080/")).toClient()
+        ch = injector.getOrNull(CClient::class.java) ?: WebSocketClient(URI("ws://127.0.0.1:8080/"), debug = true).toClient()
 
         roomNameText = root.text(font, "Room")
 
@@ -135,7 +134,10 @@ private fun WebSocketClient.toClient(): CClient {
     val pc = ProduceConsumer<String>()
     val ws = this
 
-    ws.onStringMessage { pc.produce(it) }
+    ws.onStringMessage {
+        println("[CLIENT] [WS-RECV-RAW] $it")
+        pc.produce(it)
+    }
 
     val client = object : CClient, Extra by Extra.Mixin() {
         suspend override fun send(packet: Packet) {
