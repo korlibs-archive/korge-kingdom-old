@@ -1,12 +1,13 @@
 package com.games.soywiz.korgekingdom
 
-import com.soywiz.korio.crypto.sha1Async
+import com.soywiz.korio.crypto.AsyncHash
+import com.soywiz.korio.crypto.hash
 import com.soywiz.korio.util.toHexString
 import com.soywiz.korma.geom.Point2d
 
 object ProtocolChallenge {
 	suspend fun hash(challenge: String, password: String): String {
-		return "$challenge-$password".toByteArray().sha1Async().toHexString()
+		return "$challenge-$password".toByteArray().hash(AsyncHash.SHA1).toHexString()
 	}
 }
 

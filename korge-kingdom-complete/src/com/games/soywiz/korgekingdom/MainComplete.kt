@@ -13,7 +13,7 @@ fun main(args: Array<String>) = EventLoop {
     val serverInjector = AsyncInjector()
             .map(Redis(listOf("127.0.0.1:6379")))
     val clientInjector = AsyncInjector()
-            .map(CClient::class.java, pair.client.clientLog("client"))
+            .map(pair.client.clientLog("client"), CClient::class.java)
             .map(userInfo)
 
     val server = serverInjector.get<ServerHandler>()

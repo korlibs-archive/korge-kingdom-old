@@ -1,6 +1,7 @@
 package com.games.soywiz.korgekingdom
 
 import com.soywiz.korio.async.EventLoop
+import com.soywiz.korio.async.go
 import com.soywiz.korio.async.spawnAndForget
 import com.soywiz.korio.ext.db.redis.Redis
 import com.soywiz.korio.inject.AsyncInjector
@@ -14,12 +15,12 @@ fun main(args: Array<String>) = EventLoop.main {
 
     vertx.createHttpServer()
             .websocketHandler { ws ->
-                spawnAndForget {
+                go {
                     server.handleClient(VertxWebsocketClient(ws))
                 }
             }
             .requestHandler { req ->
-                spawnAndForget {
+                go {
                     req.response().end(resources["ws.html"].readString())
                 }
             }
